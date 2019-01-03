@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"fmt"
@@ -21,10 +21,10 @@ func sayhelloName(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "returning string\n") // send data to client side
 }
 
-func main() {
+func Serve() {
 	http.HandleFunc("/", sayhelloName) // set router
 
-	err := http.ListenAndServe(":8080", nil) // set listen port
+	err := http.ListenAndServe(":8081", nil) // set listen port
 	if err != nil {
 		panic(err)
 	}
