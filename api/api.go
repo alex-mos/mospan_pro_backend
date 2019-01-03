@@ -2,31 +2,62 @@ package api
 
 import (
 	"fmt"
+	"strconv"
 	"net/http"
-	"strings"
+	"../books"
 )
 
-func sayhelloName(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()  // parse arguments, you have to call this by yourself
-	fmt.Println("form:", r.Form)  // print form information in server side
-	fmt.Println("path:", r.URL.Path)
-	fmt.Println("scheme:", r.URL.Scheme)
-	fmt.Println("url_long:", r.Form["url_long"])
-
-	for k, v := range r.Form {
-		fmt.Println("key:", k)
-		fmt.Println("val:", strings.Join(v, ""))
-	}
-
-	fmt.Fprintf(w, "returning string\n") // send data to client side
-}
-
 func Serve() {
-	http.HandleFunc("/", sayhelloName) // set router
+	http.HandleFunc("/books", getAllBooks)
+	http.HandleFunc("/order", orderBook)
 
 	err := http.ListenAndServe(":8081", nil) // set listen port
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Server is running on port 8080")
+	fmt.Println("Server is running on port 8081")
+}
+
+// Получить список всех книг в джейсоне
+func getAllBooks(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(405)
+		fmt.Fprintf(w,  "Method is not allowed")
+		return
+	}
+	allBooks, err := books.GetAll()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprintf(w, string(allBooks))
+}
+
+// Заказ выбранной книги на указанный телеграм-аккаунт
+func orderBook(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		w.WriteHeader(405)
+		fmt.Fprintf(w,  "method is not allowed")
+		return
+	}
+	err := r.ParseForm()
+	if err != nil {
+		w.WriteHeader(400)
+		fmt.Fprintf(w,  "invalid request")
+		return
+	}
+	id, err := strconv.Atoi(r.Form.Get("id"))
+	if err != nil {
+		w.WriteHeader(400)
+		fmt.Fprintf(w,  "id is not a number")
+		return
+	}
+	telegram := r.Form.Get("telegram")
+	err = books.Order(id, telegram)
+	if err != nil {
+		w.WriteHeader(422)
+		fmt.Fprintf(w, err.Error())
+		return
+	}
+	w.WriteHeader(200)
+	return
 }

@@ -2,7 +2,10 @@ package books
 
 import (
 	"database/sql"
+	"encoding/json"
+	"errors"
 	_ "github.com/mattn/go-sqlite3"
+	"strconv"
 )
 
 var (
@@ -10,19 +13,23 @@ var (
 )
 
 type Book struct {
-	id int16
-	author string
-	title string
-	edition string
-	goodreads_link string
-	cover_url string
-	status string
+	Id int16 `json:"id"`
+	Author string `json:"author"`
+	Title string `json:"title"`
+	Edition string `json:"edition"`
+	Goodreads_link string `json:"goodreads_link"`
+	Cover_url string `json:"cover_url"`
+	Status string `json:"status"`
 	telegram string
+}
+
+type BookSlice struct {
+	Data []Book `json:"data"`
 }
 
 // Добавить книгу к списку доступных для заказа
 func Add(author string, title string, edition string, goodreads_link string) error {
-	var newBook Book = Book{title: title, author: author, goodreads_link: goodreads_link}
+	var newBook Book = Book{Title: title, Author: author, Goodreads_link: goodreads_link}
 
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
@@ -32,7 +39,7 @@ func Add(author string, title string, edition string, goodreads_link string) err
 	if err != nil {
 		return err
 	}
-	_, err = statement.Exec(newBook.author, newBook.title, newBook.edition, newBook.goodreads_link, "", "free", "")
+	_, err = statement.Exec(newBook.Author, newBook.Title, newBook.Edition, newBook.Goodreads_link, "", "free", "")
 	if err != nil {
 		return err
 	}
@@ -40,9 +47,10 @@ func Add(author string, title string, edition string, goodreads_link string) err
 	return nil
 }
 
-// Получить полный список книг
-func GetAll() ([]Book, error) {
-	var result []Book
+// Получить джейсон с полным списком книг
+func GetAll() ([]byte, error) {
+	var result BookSlice
+	var resultJSON []byte
 	var book Book
 
 	db, err := sql.Open("sqlite3", dbPath)
@@ -54,20 +62,50 @@ func GetAll() ([]Book, error) {
 		return nil, err
 	}
 	for rows.Next() {
-		err := rows.Scan(&book.id, &book.author, &book.title, &book.edition, &book.goodreads_link, &book.cover_url, &book.status, &book.telegram)
+		err := rows.Scan(&book.Id, &book.Author, &book.Title, &book.Edition, &book.Goodreads_link, &book.Cover_url, &book.Status, &book.telegram)
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, book)
+
+		result.Data = append(result.Data, book)
 	}
 	rows.Close()
 	db.Close()
-	return result, nil
+
+	// Преобразовать массив книг в джейсон
+	resultJSON, err = json.Marshal(result)
+	if err != nil {
+		return nil, err
+	}
+	return resultJSON, nil
 }
 
 // Заказать книгу с выбранным id на указанный телеграм-аккаунт
-func Order(id int16, telegram string) error  {
+func Order(id int, telegram string) error  {
+	var book Book
+
 	db, err := sql.Open("sqlite3", dbPath)
+
+	// Проверить, не заказана ли уже эта книга
+	rows, err := db.Query("SELECT status FROM books WHERE id=" + strconv.Itoa(id))
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		err := rows.Scan(&book.Status)
+		if err != nil {
+			return err
+		}
+	}
+	rows.Close()
+	if book.Status == "" {
+		return errors.New("book is not found")
+	}
+	if book.Status != "free" {
+		return errors.New("this book is already reserved")
+	}
+
+	// Пометить в базе, что книга заказана
 	statement, err := db.Prepare("UPDATE books SET status=?, telegram=? where id=?")
 	if err != nil {
 		return err
@@ -79,6 +117,11 @@ func Order(id int16, telegram string) error  {
 	db.Close()
 	return nil
 }
+
+// Получить строку вида "Автор — Название" по id книги. Нужно для формирования письма.
+//func GetTitleById (id) {
+//
+//}
 
 
 /* таблица с книгами
