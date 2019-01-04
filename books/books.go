@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"github.com/alex-mos/mospan_pro_backend/email"
 	_ "github.com/mattn/go-sqlite3"
 	"strconv"
 )
@@ -13,14 +14,14 @@ var (
 )
 
 type Book struct {
-	Id int16 `json:"id"`
-	Author string `json:"author"`
-	Title string `json:"title"`
-	Edition string `json:"edition"`
+	Id             int16  `json:"id"`
+	Author         string `json:"author"`
+	Title          string `json:"title"`
+	Edition        string `json:"edition"`
 	Goodreads_link string `json:"goodreads_link"`
-	Cover_url string `json:"cover_url"`
-	Status string `json:"status"`
-	telegram string
+	Cover_url      string `json:"cover_url"`
+	Status         string `json:"status"`
+	telegram       string
 }
 
 type BookSlice struct {
@@ -81,7 +82,7 @@ func GetAll() ([]byte, error) {
 }
 
 // Заказать книгу с выбранным id на указанный телеграм-аккаунт
-func Order(id int, telegram string) error  {
+func Order(id int, telegram string) error {
 	var book Book
 
 	db, err := sql.Open("sqlite3", dbPath)
@@ -105,6 +106,16 @@ func Order(id int, telegram string) error  {
 		return errors.New("this book is already reserved")
 	}
 
+	// Отправить письмо о заказе книги
+	title, err := getTitleById(id)
+	if err != nil {
+		return err
+	}
+	err = email.SendBookRequest(title, telegram)
+	if err != nil {
+		return err
+	}
+
 	// Пометить в базе, что книга заказана
 	statement, err := db.Prepare("UPDATE books SET status=?, telegram=? where id=?")
 	if err != nil {
@@ -119,10 +130,29 @@ func Order(id int, telegram string) error  {
 }
 
 // Получить строку вида "Автор — Название" по id книги. Нужно для формирования письма.
-//func GetTitleById (id) {
-//
-//}
+func getTitleById(id int) (string, error) {
+	var book Book
+	var result string
 
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return "", err
+	}
+	rows, err := db.Query("SELECT author, title FROM books WHERE id=" + strconv.Itoa(id))
+	if err != nil {
+		return "", err
+	}
+	for rows.Next() {
+		err := rows.Scan(&book.Author, &book.Title)
+		if err != nil {
+			return "", err
+		}
+	}
+	rows.Close()
+	result = book.Author + " — " + book.Title
+	db.Close()
+	return result, nil
+}
 
 /* таблица с книгами
 CREATE TABLE books2 (
@@ -135,7 +165,7 @@ CREATE TABLE books2 (
 	status text,
 	telegram text
 );
- */
+*/
 
 /* пример добавления книги
 err := Add("William Gibson", "Neuromancer", "мягкая обложка, жёлтые страницы", "https://goodreads.com")
