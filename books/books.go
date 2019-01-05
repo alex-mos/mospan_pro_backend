@@ -58,7 +58,7 @@ func GetAll() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows, err := db.Query("SELECT * FROM books")
+	rows, err := db.Query("SELECT * FROM books order by status")
 	if err != nil {
 		return nil, err
 	}
@@ -87,18 +87,20 @@ func Order(id int, telegram string) error {
 
 	db, err := sql.Open("sqlite3", dbPath)
 
-	// Проверить, не заказана ли уже эта книга
-	rows, err := db.Query("SELECT status FROM books WHERE id=" + strconv.Itoa(id))
+	// Получить значения, нужные для заказа
+	rows, err := db.Query("SELECT author, title, status FROM books WHERE id=" + strconv.Itoa(id))
 	if err != nil {
 		return err
 	}
 	for rows.Next() {
-		err := rows.Scan(&book.Status)
+		err := rows.Scan(&book.Author, &book.Title, &book.Status)
 		if err != nil {
 			return err
 		}
 	}
 	rows.Close()
+
+	// Проверить, не заказана ли уже эта книга
 	if book.Status == "" {
 		return errors.New("book is not found")
 	}
@@ -107,11 +109,7 @@ func Order(id int, telegram string) error {
 	}
 
 	// Отправить письмо о заказе книги
-	title, err := getTitleById(id)
-	if err != nil {
-		return err
-	}
-	err = email.SendBookRequest(title, telegram)
+	err = email.SendBookRequest(book.Author + " — " + book.Title, telegram)
 	if err != nil {
 		return err
 	}
@@ -127,31 +125,6 @@ func Order(id int, telegram string) error {
 	}
 	db.Close()
 	return nil
-}
-
-// Получить строку вида "Автор — Название" по id книги. Нужно для формирования письма.
-func getTitleById(id int) (string, error) {
-	var book Book
-	var result string
-
-	db, err := sql.Open("sqlite3", dbPath)
-	if err != nil {
-		return "", err
-	}
-	rows, err := db.Query("SELECT author, title FROM books WHERE id=" + strconv.Itoa(id))
-	if err != nil {
-		return "", err
-	}
-	for rows.Next() {
-		err := rows.Scan(&book.Author, &book.Title)
-		if err != nil {
-			return "", err
-		}
-	}
-	rows.Close()
-	result = book.Author + " — " + book.Title
-	db.Close()
-	return result, nil
 }
 
 /* таблица с книгами

@@ -12,7 +12,7 @@ func SendBookRequest(title string, telegram string) error {
 
 	msg := "From: " + from + "\n" +
 		"To: " + to + "\n" +
-		"Subject: book request " + title + "\n\n" +
+		"Subject: book request: " + title + "\n\n" +
 		telegram
 	err := smtp.SendMail("smtp.gmail.com:587",
 		smtp.PlainAuth("", from, pass, "smtp.gmail.com"),
