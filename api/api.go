@@ -3,28 +3,26 @@ package api
 import (
 	"fmt"
 	"github.com/alex-mos/mospan_pro_backend/books"
+	"github.com/julienschmidt/httprouter"
 	"net/http"
 	"strconv"
 )
 
 func Serve() {
-	http.HandleFunc("/books", getAllBooks)
-	http.HandleFunc("/order", orderBook)
+	router := httprouter.New()
+
+	router.GET("/books", getAllBooks)
+	router.POST("/order/:id", orderBook)
 
 	fmt.Println("Server is running on port 8081")
-	err := http.ListenAndServe(":8081", nil) // set listen port
+	err := http.ListenAndServe(":8081", router)
 	if err != nil {
 		panic(err)
 	}
 }
 
 // Получить список всех книг в джейсоне
-func getAllBooks(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		w.WriteHeader(405)
-		fmt.Fprintf(w, "Method is not allowed")
-		return
-	}
+func getAllBooks(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	allBooks, err := books.GetAll()
 	if err != nil {
 		panic(err)
@@ -33,19 +31,14 @@ func getAllBooks(w http.ResponseWriter, r *http.Request) {
 }
 
 // Заказ выбранной книги на указанный телеграм-аккаунт
-func orderBook(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		w.WriteHeader(405)
-		fmt.Fprintf(w, "method is not allowed")
-		return
-	}
+func orderBook(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	err := r.ParseForm()
 	if err != nil {
 		w.WriteHeader(400)
 		fmt.Fprintf(w, "invalid request")
 		return
 	}
-	id, err := strconv.Atoi(r.Form.Get("id"))
+	id, err := strconv.Atoi(ps.ByName("id"))
 	if err != nil {
 		w.WriteHeader(400)
 		fmt.Fprintf(w, "id is not a number")
