@@ -1,14 +1,14 @@
 package email
 
 import (
-	"github.com/alex-mos/mospan_pro_backend/config"
 	"net/smtp"
+	"os"
 )
 
 func SendBookRequest(title string, telegram string) error {
-	from := config.GetConfig().Email
-	pass := config.GetConfig().GooglePassword
-	to := config.GetConfig().Email
+	from := os.Getenv("EMAIL")
+	pass := os.Getenv("GOOGLE_PASS")
+	to := os.Getenv("EMAIL")
 
 	msg := "From: " + from + "\n" +
 		"To: " + to + "\n" +
