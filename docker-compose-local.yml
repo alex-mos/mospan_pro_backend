@@ -4,11 +4,11 @@ services:
   frontend:
     container_name: mospan_pro_frontend
     restart: always
-    build: /home/ugo/mospan_pro_frontend
+    build: /Users/ugo/projects/mospan_pro_frontend
     ports:
-      - '8080:80'
+      - '8080:8080'
     env_file:
-      - /home/ugo/mospan_pro_frontend/.env
+      - /Users/ugo/projects/mospan_pro_frontend/.env
     links:
       - backend
   backend:
