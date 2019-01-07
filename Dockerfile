@@ -1,10 +1,5 @@
 FROM golang:1.11.4-alpine3.8
 
-ARG EMAIL
-ENV EMAIL=$EMAIL
-ARG GOOGLE_PASS
-ENV GOOGLE_PASS=$GOOGLE_PASS
-
 RUN apk add --no-cache git g++ make sqlite
 WORKDIR /app
 # Set an env var that matches your github repo name, replace treeder/dockergo here with your repo name
