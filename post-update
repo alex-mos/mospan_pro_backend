@@ -1,5 +1,0 @@
-#!/bin/sh
-# git hook for container building. move it to .git/hooks
-docker rm $(docker stop $(docker ps -a -q --filter ancestor=mospan_pro_backend --format="{{.ID}}"))
-docker build -t mospan_pro_backend /home/ugo/mospan_pro_backend
-docker run -d -p 8081:8081 --env-file /home/ugo/mospan_pro_backend/.env  mospan_pro_backend

@@ -1,16 +1,31 @@
 package books
 
+/* таблица с книгами
+CREATE TABLE `books` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `author` varchar(255) DEFAULT '',
+  `title` varchar(255) DEFAULT '',
+  `edition` varchar(255) DEFAULT '',
+  `goodreads_link` varchar(255) DEFAULT '',
+  `cover_url` varchar(255) DEFAULT '',
+  `status` varchar(255) DEFAULT '',
+  `telegram` varchar(255) DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+*/
+
 import (
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"github.com/alex-mos/mospan_pro_backend/email"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/go-sql-driver/mysql"
+	"os"
 	"strconv"
 )
 
 var (
-	dbPath string = "./database.db"
+	dbPath string = "root:" + os.Getenv("MYSQL_ROOT_PASSWORD") + "@tcp(database:3306)/mospan_pro?charset=utf8"
 )
 
 type Book struct {
@@ -29,10 +44,15 @@ type BookSlice struct {
 }
 
 // Добавить книгу к списку доступных для заказа
+// Пример: err := Add("William Gibson", "Neuromancer", "мягкая обложка, жёлтые страницы", "https://goodreads.com")
 func Add(author string, title string, edition string, goodreads_link string) error {
 	var newBook Book = Book{Title: title, Author: author, Goodreads_link: goodreads_link}
 
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("mysql", dbPath)
+	if err != nil {
+		return err
+	}
+	err = db.Ping()
 	if err != nil {
 		return err
 	}
@@ -49,12 +69,17 @@ func Add(author string, title string, edition string, goodreads_link string) err
 }
 
 // Получить джейсон с полным списком книг
+// Пример: allBooks, err := GetAll()
 func GetAll() ([]byte, error) {
 	var result BookSlice
 	var resultJSON []byte
 	var book Book
 
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("mysql", dbPath)
+	if err != nil {
+		return nil, err
+	}
+	err = db.Ping()
 	if err != nil {
 		return nil, err
 	}
@@ -82,10 +107,18 @@ func GetAll() ([]byte, error) {
 }
 
 // Заказать книгу с выбранным id на указанный телеграм-аккаунт
+// Пример: Order(4, "alexander_mospan")
 func Order(id int, telegram string) error {
 	var book Book
 
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("mysql", dbPath)
+	if err != nil {
+		return err
+	}
+	err = db.Ping()
+	if err != nil {
+		return err
+	}
 
 	// Получить значения, нужные для заказа
 	rows, err := db.Query("SELECT author, title, status FROM books WHERE id=" + strconv.Itoa(id))
@@ -126,35 +159,3 @@ func Order(id int, telegram string) error {
 	db.Close()
 	return nil
 }
-
-/* таблица с книгами
-CREATE TABLE books2 (
-	id integer primary key autoincrement,
-	author text,
-	title text,
-	edition text,
-	goodreads_link text,
-	cover_url text,
-	status text,
-	telegram text
-);
-*/
-
-/* пример добавления книги
-err := Add("William Gibson", "Neuromancer", "мягкая обложка, жёлтые страницы", "https://goodreads.com")
-if err != nil {
-	panic(err)
-}
-*/
-
-/* пример получения массива книг
-allBooks, err := GetAll()
-if err != nil {
-	panic(err)
-}
-fmt.Println(allBooks)
-*/
-
-/* пример заказа книги
-Order(4, "alexander_mospan")
-*/
