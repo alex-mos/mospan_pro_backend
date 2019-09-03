@@ -24,6 +24,18 @@ services:
       - '3306:3306'
     env_file:
       - .env
+  smtp:
+    container_name: mospan_pro_smtp
+    image: tianon/exim4
+    restart: always
+    networks:
+      mospan:
+    ports:
+      - '25:25'
+    # Чтобы отсылать от имени пользователя Gmail
+    #environment:
+    #  - GMAIL_USER=username@gmail.com
+    #  - GMAIL_PASSWORD=password
 
 volumes:
   db-data:
